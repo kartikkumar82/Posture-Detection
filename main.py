@@ -15,8 +15,8 @@ import numpy as np
 import time
 import argparse
 import sys
+import os
 
-from detector import PostureDetector
 from alert_system import AlertSystem
 from session_logger import init_db, log_session, log_issue_event
 from config import (
@@ -33,7 +33,8 @@ def parse_args():
     p.add_argument("--no-audio",    action="store_true", help="Disable TTS alerts")
     p.add_argument("--debug",       action="store_true", help="Show angle values")
     p.add_argument("--threshold",   type=int, default=5,  help="Alert threshold seconds")
-    p.add_argument("--camera",      type=int, default=0,  help="Camera device index")
+    p.add_argument("--camera",      default="auto",       help="Camera index, or 'auto' to scan")
+    p.add_argument("--max-camera",  type=int, default=5,  help="Highest camera index to scan in auto mode")
     return p.parse_args()
 
 
@@ -47,6 +48,62 @@ def load_model():
     with open(MODEL_PATH,   "rb") as f: model = pickle.load(f)
     with open(ENCODER_PATH, "rb") as f: le    = pickle.load(f)
     return model, le
+
+
+def _camera_indexes(camera_arg: str, max_camera: int):
+    if str(camera_arg).lower() == "auto":
+        return range(max(0, max_camera) + 1)
+
+    try:
+        camera_index = int(camera_arg)
+    except ValueError:
+        print(f"[ERROR] Invalid camera value: {camera_arg}")
+        print("        Use --camera auto or a number, for example --camera 1")
+        sys.exit(2)
+
+    if camera_index < 0:
+        print("[ERROR] Camera index must be 0 or greater.")
+        sys.exit(2)
+
+    return [camera_index]
+
+
+def _can_read_frame(cap) -> bool:
+    for _ in range(10):
+        ok, _ = cap.read()
+        if ok:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def open_camera(camera_arg: str, max_camera: int = 5):
+    """Open a webcam, trying the most reliable OpenCV backends for this OS."""
+    backend_order = []
+    if sys.platform.startswith("win"):
+        backend_order.extend([
+            ("DirectShow", cv2.CAP_DSHOW),
+            ("Media Foundation", cv2.CAP_MSMF),
+        ])
+    backend_order.append(("OpenCV default", cv2.CAP_ANY))
+
+    previous_log_level = cv2.getLogLevel() if hasattr(cv2, "getLogLevel") else None
+    if previous_log_level is not None and hasattr(cv2, "setLogLevel"):
+        cv2.setLogLevel(0)
+
+    try:
+        for camera_index in _camera_indexes(camera_arg, max_camera):
+            for backend_name, backend in backend_order:
+                cap = cv2.VideoCapture(camera_index, backend)
+                if cap.isOpened() and _can_read_frame(cap):
+                    print(f"  Camera {camera_index} opened with {backend_name}.")
+                    return cap, camera_index
+                cap.release()
+    finally:
+        if previous_log_level is not None and hasattr(cv2, "setLogLevel"):
+            cv2.setLogLevel(previous_log_level)
+
+    return None, None
 
 
 # ── UI overlay helpers ─────────────────────────────────────────────────────
@@ -148,15 +205,21 @@ def run(args):
     print("  AI Posture Detection — starting up")
     print("=" * 52)
 
-    model, le   = load_model()
-    detector    = PostureDetector()
-    alerts      = AlertSystem(threshold=args.threshold)
-    db          = init_db()
-    cap         = cv2.VideoCapture(args.camera)
+    model, le = load_model()
+    cap, camera_index = open_camera(args.camera, args.max_camera)
 
-    if not cap.isOpened():
-        print("[ERROR] Cannot open camera.")
+    if cap is None:
+        camera_text = f"camera {args.camera}" if args.camera != "auto" else f"any camera from 0 to {args.max_camera}"
+        print(f"[ERROR] Cannot open {camera_text}.")
+        print("        Close other camera apps, check Windows camera privacy settings,")
+        print("        or plug in a webcam and run  python main.py --camera auto")
         sys.exit(1)
+
+    from detector import PostureDetector
+
+    detector    = PostureDetector()
+    alerts      = AlertSystem(threshold=args.threshold, enable_audio=not args.no_audio)
+    db          = init_db()
 
     # Session tracking
     session_start = time.time()

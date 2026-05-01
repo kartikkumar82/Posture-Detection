@@ -679,8 +679,8 @@ Dependency purpose:
 
 - `main.py` imports `log_issue_event` but does not currently call it, so detailed alert events are not written to `issue_events`.
 - `config.py` defines `HEAD_FORWARD_THRESHOLD`, but the current detector code does not use it.
-- `alert_system.py` supports TTS and desktop notifications. The `--no-audio` CLI flag is parsed in `main.py`, but the current `AlertSystem` constructor does not receive or use that setting.
-- `main.py` uses `os.path.exists()` inside `load_model()`. The current file should import `os` for this function to run correctly.
+- `alert_system.py` treats voice and desktop notification dependencies as optional, so missing `pyttsx3` or `plyer` will not stop the app from starting.
+- `train_model.py` uses single-worker Random Forest training and a non-GUI Matplotlib backend to avoid Windows permission/Tk backend errors during training.
 - The configured class list includes six classes, but the currently visible dataset folders include only `upright` and `slouch`. Training will skip missing class folders.
 - `build_exe.py` reminds the user to copy model files into the distribution folder. The PyInstaller command currently adds code/assets but does not add `models/` directly.
 
