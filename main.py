@@ -16,6 +16,8 @@ import time
 import argparse
 import sys
 import os
+import warnings
+from contextlib import contextmanager
 
 from alert_system import AlertSystem
 from session_logger import init_db, log_session, log_issue_event
@@ -45,8 +47,36 @@ def load_model():
         print(f"[ERROR] Model not found: {MODEL_PATH}")
         print("        Run  python train_model.py  first.")
         sys.exit(1)
-    with open(MODEL_PATH,   "rb") as f: model = pickle.load(f)
-    with open(ENCODER_PATH, "rb") as f: le    = pickle.load(f)
+
+    try:
+        from sklearn.exceptions import InconsistentVersionWarning
+    except Exception:
+        InconsistentVersionWarning = None
+
+    version_warning_seen = False
+    with warnings.catch_warnings(record=True) as caught:
+        if InconsistentVersionWarning is not None:
+            warnings.simplefilter("always", InconsistentVersionWarning)
+
+        with open(MODEL_PATH, "rb") as f:
+            model = pickle.load(f)
+        with open(ENCODER_PATH, "rb") as f:
+            le = pickle.load(f)
+
+    for warning in caught:
+        is_version_warning = (
+            InconsistentVersionWarning is not None
+            and issubclass(warning.category, InconsistentVersionWarning)
+        )
+        if is_version_warning:
+            version_warning_seen = True
+        else:
+            warnings.warn(warning.message, warning.category, stacklevel=2)
+
+    if version_warning_seen:
+        print("[WARN] Saved model was trained with another scikit-learn version.")
+        print("       If predictions look wrong, refresh it with: python train_model.py")
+
     return model, le
 
 
@@ -77,6 +107,24 @@ def _can_read_frame(cap) -> bool:
     return False
 
 
+@contextmanager
+def _suppress_native_stderr():
+    """Temporarily hide noisy native-library stderr output."""
+    stderr_copy = None
+    devnull = None
+    try:
+        stderr_copy = os.dup(2)
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, 2)
+        yield
+    finally:
+        if stderr_copy is not None:
+            os.dup2(stderr_copy, 2)
+            os.close(stderr_copy)
+        if devnull is not None:
+            os.close(devnull)
+
+
 def open_camera(camera_arg: str, max_camera: int = 5):
     """Open a webcam, trying the most reliable OpenCV backends for this OS."""
     backend_order = []
@@ -94,11 +142,16 @@ def open_camera(camera_arg: str, max_camera: int = 5):
     try:
         for camera_index in _camera_indexes(camera_arg, max_camera):
             for backend_name, backend in backend_order:
-                cap = cv2.VideoCapture(camera_index, backend)
-                if cap.isOpened() and _can_read_frame(cap):
+                cap = None
+                with _suppress_native_stderr():
+                    cap = cv2.VideoCapture(camera_index, backend)
+                    can_read = cap.isOpened() and _can_read_frame(cap)
+
+                if can_read:
                     print(f"  Camera {camera_index} opened with {backend_name}.")
                     return cap, camera_index
-                cap.release()
+                if cap is not None:
+                    cap.release()
     finally:
         if previous_log_level is not None and hasattr(cv2, "setLogLevel"):
             cv2.setLogLevel(previous_log_level)

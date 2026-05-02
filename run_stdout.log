@@ -1,0 +1,20 @@
+====================================================
+  AI Posture Detection — starting up
+====================================================
+  Camera 0 opened with DirectShow.
+[WARN] pyttsx3 is not installed. Voice alerts are disabled.
+  Press  Q  to quit and save session.
+
+[ALERT][CRITICAL] slouch: You are slouching. Roll your shoulders back and sit up straight.
+[ALERT][INFO] too_close: You are too close to the screen. Move back to 50 to 70 centimetres.
+[ALERT][CRITICAL] slouch: You are slouching. Roll your shoulders back and sit up straight.
+[ALERT][INFO] too_close: You are too close to the screen. Move back to 50 to 70 centimetres.
+[ALERT][INFO] eye_closing: Your eyes are closing. Take a 20-second break and look away from the screen.
+[ALERT][INFO] neck_tilt_left: Your neck is tilting left. Level your head so both ears are at the same height.
+[ALERT][CRITICAL] slouch: You are slouching. Roll your shoulders back and sit up straight.
+[ALERT][INFO] too_close: You are too close to the screen. Move back to 50 to 70 centimetres.
+
+[SESSION] Duration     : 66s
+[SESSION] Good posture : 92%
+[SESSION] Main issue   : slouch
+[SESSION] Saved to DB  : session #2
