@@ -6,25 +6,40 @@ an issue persists past the threshold. Resets when user corrects.
 
 import time
 import threading
-import pyttsx3
-from plyer import notification
 from config import ALERT_THRESHOLD_SECONDS, ALERT_COOLDOWN_SECONDS
+
+try:
+    import pyttsx3
+except ImportError:
+    pyttsx3 = None
+
+try:
+    from plyer import notification
+except ImportError:
+    notification = None
 
 
 class AlertSystem:
-    def __init__(self, threshold: int = ALERT_THRESHOLD_SECONDS):
+    def __init__(self, threshold: int = ALERT_THRESHOLD_SECONDS, enable_audio: bool = True):
         self.threshold    = threshold
         self.bad_start    = {}   # key -> timestamp issue started
         self.alerted_at   = {}   # key -> timestamp last alert fired
         self._tts_lock    = threading.Lock()
 
-        try:
-            self._tts = pyttsx3.init()
-            self._tts.setProperty("rate", 155)
-            self._tts.setProperty("volume", 0.9)
-            self._tts_ready = True
-        except Exception:
+        if enable_audio and pyttsx3 is not None:
+            try:
+                self._tts = pyttsx3.init()
+                self._tts.setProperty("rate", 155)
+                self._tts.setProperty("volume", 0.9)
+                self._tts_ready = True
+            except Exception:
+                self._tts_ready = False
+        else:
+            self._tts = None
             self._tts_ready = False
+
+        if enable_audio and pyttsx3 is None:
+            print("[WARN] pyttsx3 is not installed. Voice alerts are disabled.")
 
     def update(self, key: str, is_bad: bool, msg: str, severity: str = "warning") -> bool:
         """
@@ -77,15 +92,16 @@ class AlertSystem:
 
     def _fire(self, key: str, msg: str, severity: str):
         # 1. OS toast notification
-        try:
-            notification.notify(
-                title="Posture Alert",
-                message=msg,
-                app_name="AI Posture Detection",
-                timeout=5,
-            )
-        except Exception:
-            pass
+        if notification is not None:
+            try:
+                notification.notify(
+                    title="Posture Alert",
+                    message=msg,
+                    app_name="AI Posture Detection",
+                    timeout=5,
+                )
+            except Exception:
+                pass
 
         # 2. TTS voice alert (non-blocking thread)
         if self._tts_ready:

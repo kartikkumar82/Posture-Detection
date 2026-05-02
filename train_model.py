@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 import cv2
 import mediapipe as mp
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestClassifier
@@ -97,7 +100,7 @@ def train(csv_path: str = DATA_CSV):
         n_estimators=N_ESTIMATORS,
         max_depth=MAX_DEPTH,
         random_state=RANDOM_STATE,
-        n_jobs=-1,
+        n_jobs=1,
     )
     model.fit(X_train, y_train)
 
@@ -107,6 +110,7 @@ def train(csv_path: str = DATA_CSV):
     print(classification_report(y_test, y_pred, target_names=le.classes_))
 
     # Confusion matrix
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 6))
     ConfusionMatrixDisplay.from_predictions(
         y_test, y_pred,
@@ -122,7 +126,6 @@ def train(csv_path: str = DATA_CSV):
     plt.close()
 
     # ── Save ───────────────────────────────────────────────────────────────
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     with open(MODEL_PATH,   "wb") as f: pickle.dump(model, f)
     with open(ENCODER_PATH, "wb") as f: pickle.dump(le,    f)
     print(f"\n[SAVE] Model   : {MODEL_PATH}")

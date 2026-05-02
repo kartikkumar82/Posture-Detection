@@ -9,6 +9,5 @@ matplotlib>=3.7.0
 streamlit>=1.28.0
 plotly>=5.17.0
 requests>=2.31.0
-pygame>=2.5.0
 Pillow>=10.0.0
 pyinstaller>=6.0.0
