@@ -32,8 +32,15 @@ PIP_NAMES = {
 
 def check_python():
     major, minor = sys.version_info[:2]
-    if major < 3 or minor < 9:
+    version = (major, minor)
+    if version < (3, 9):
         print(f"[ERROR] Python 3.9+ required. You have {major}.{minor}")
+        sys.exit(1)
+    if version >= (3, 13):
+        print(f"[ERROR] Python {major}.{minor} is not supported by this project.")
+        print("        This app uses MediaPipe's classic Solutions API,")
+        print("        so please use Python 3.9 through 3.12.")
+        print("        Recommended: Python 3.10.")
         sys.exit(1)
     print(f"[OK] Python {major}.{minor}")
 
@@ -56,7 +63,12 @@ def check_imports():
     all_ok = True
     for pkg in REQUIRED_PACKAGES:
         try:
-            importlib.import_module(pkg)
+            module = importlib.import_module(pkg)
+            if pkg == "mediapipe" and not hasattr(module, "solutions"):
+                print("  [FAIL] mediapipe — installed version has no classic Solutions API")
+                print("         Use Python 3.9-3.12 and run: pip install -r requirements.txt")
+                all_ok = False
+                continue
             print(f"  [OK] {pkg}")
         except ImportError:
             pip_name = PIP_NAMES.get(pkg, pkg)

@@ -11,6 +11,8 @@ Real-time posture and eye monitoring using your webcam, MediaPipe, and machine l
 - Screen distance monitoring
 - Timed voice alerts + OS toast notifications (alerts fire after 5 seconds, not every frame)
 - On-screen correction tip panel
+- Live HUD with FPS, session timer, posture score, body metrics, and alert countdowns
+- Keyboard controls for pause, debug overlay, screenshots, reset, help, and quit
 - Session history stored in SQLite
 - Streamlit analytics dashboard
 - Packagable as a standalone `.exe` (no Python needed on target machine)
@@ -23,19 +25,22 @@ Real-time posture and eye monitoring using your webcam, MediaPipe, and machine l
 # 1. Clone or download the project folder
 cd posture_software
 
-# 2. Run setup (installs libraries, checks webcam, optional dataset download)
+# 2. Use Python 3.9-3.12 (Python 3.10 recommended)
+python --version
+
+# 3. Run setup (installs libraries, checks webcam, optional dataset download)
 python setup.py
 
-# 3. Collect training images (200 per posture class)
+# 4. Collect training images (200 per posture class)
 python collect_data.py
 
-# 4. Train the model
+# 5. Train the model
 python train_model.py
 
-# 5. Run live detection
+# 6. Run live detection
 python main.py
 
-# 6. View your dashboard (separate terminal)
+# 7. View your dashboard (separate terminal)
 streamlit run dashboard.py
 ```
 
@@ -90,6 +95,14 @@ python main.py --no-audio         # disable TTS voice alerts
 python main.py --threshold 3      # alert after 3 seconds (default: 5)
 python main.py --camera 1         # use second camera (default: 0)
 
+# Live window controls
+Q  quit and save session
+P  pause or resume
+D  toggle debug metrics
+S  save screenshot to data/screenshots/
+R  reset live session stats
+H  show or hide help
+
 # Build standalone executable
 python build_exe.py               # folder mode (recommended)
 python build_exe.py --onefile     # single .exe file
@@ -116,6 +129,7 @@ All thresholds and settings live in `config.py`:
 ## Hardware Requirements
 
 - Webcam (built-in laptop camera is fine)
+- Python 3.9-3.12 (Python 3.10 recommended)
 - 4GB RAM minimum (8GB recommended)
 - CPU: Intel i3 / AMD Ryzen 3 or better
 - GPU: Not required (MediaPipe runs on CPU)
