@@ -14,6 +14,24 @@ from config import (
 )
 
 
+def _mediapipe_solutions():
+    solutions = getattr(mp, "solutions", None)
+    has_classic_api = (
+        solutions is not None
+        and hasattr(solutions, "pose")
+        and hasattr(solutions, "face_mesh")
+    )
+    if has_classic_api:
+        return solutions
+
+    version = getattr(mp, "__version__", "unknown")
+    raise RuntimeError(
+        "Incompatible MediaPipe install: this app requires the classic "
+        f"MediaPipe Solutions API, but mediapipe {version} does not provide it. "
+        "Use Python 3.9-3.12 and reinstall with: pip install -r requirements.txt"
+    )
+
+
 class PostureDetector:
     """
     Wraps MediaPipe Pose + FaceMesh for real-time posture analysis.
@@ -26,18 +44,20 @@ class PostureDetector:
     """
 
     def __init__(self):
-        self._pose = mp.solutions.pose.Pose(
+        solutions = _mediapipe_solutions()
+
+        self._pose = solutions.pose.Pose(
             min_detection_confidence=0.6,
             min_tracking_confidence=0.6,
         )
-        self._face = mp.solutions.face_mesh.FaceMesh(
+        self._face = solutions.face_mesh.FaceMesh(
             refine_landmarks=True,
             min_detection_confidence=0.6,
             min_tracking_confidence=0.6,
         )
-        self._draw      = mp.solutions.drawing_utils
-        self._draw_style = mp.solutions.drawing_styles
-        self._pose_conn  = mp.solutions.pose.POSE_CONNECTIONS
+        self._draw      = solutions.drawing_utils
+        self._draw_style = solutions.drawing_styles
+        self._pose_conn  = solutions.pose.POSE_CONNECTIONS
 
     # ── Public API ──────────────────────────────────────────────────────────
 
