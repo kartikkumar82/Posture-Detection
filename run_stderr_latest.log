@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\ASUS\Downloads\Telegram Desktop\posture_software\posture_software\main.py", line 776, in <module>
+    run(args)
+  File "C:\Users\ASUS\Downloads\Telegram Desktop\posture_software\posture_software\main.py", line 593, in run
+    model, le = load_model()
+  File "C:\Users\ASUS\Downloads\Telegram Desktop\posture_software\posture_software\main.py", line 64, in load_model
+    model = pickle.load(f)
+ModuleNotFoundError: No module named 'numpy._core.numeric'

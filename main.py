@@ -61,9 +61,9 @@ def load_model():
             warnings.simplefilter("always", InconsistentVersionWarning)
 
         with open(MODEL_PATH, "rb") as f:
-            model = pickle.load(f)
+            model = _load_pickle_compat(f)
         with open(ENCODER_PATH, "rb") as f:
-            le = pickle.load(f)
+            le = _load_pickle_compat(f)
 
     for warning in caught:
         is_version_warning = (
@@ -80,6 +80,29 @@ def load_model():
         print("       If predictions look wrong, refresh it with: python train_model.py")
 
     return model, le
+
+
+class _CompatUnpickler(pickle.Unpickler):
+    """Load NumPy 2 pickles in NumPy 1.x environments used by MediaPipe."""
+
+    MODULE_ALIASES = {
+        "numpy._core.multiarray": "numpy.core.multiarray",
+        "numpy._core.numeric": "numpy.core.numeric",
+    }
+
+    def find_class(self, module, name):
+        module = self.MODULE_ALIASES.get(module, module)
+        return super().find_class(module, name)
+
+
+def _load_pickle_compat(file_obj):
+    try:
+        return pickle.load(file_obj)
+    except ModuleNotFoundError as exc:
+        if not str(exc).endswith("'numpy._core.numeric'"):
+            raise
+        file_obj.seek(0)
+        return _CompatUnpickler(file_obj).load()
 
 
 def _camera_indexes(camera_arg: str, max_camera: int):
